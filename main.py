@@ -30,7 +30,7 @@ def buscar_openalex(query, limit=3):
         "search": query,
         "filter": "is_oa:true",  # Solo acceso abierto
         "per_page": limit,
-        "sort": "cited_count_desc"
+        "sort": "cited_by_count:desc"  # ✅ Campo correcto
     }
     try:
         print("🔍 Buscando en OpenAlex...")
@@ -44,7 +44,7 @@ def buscar_openalex(query, limit=3):
                     "authors": [author["author"]["display_name"] for author in item.get("authorships", [])[:4]],
                     "year": item.get("publication_year"),
                     "journal": item.get("primary_location", {}).get("source", {}).get("display_name", "Sin revista"),
-                    "citations": item.get("cited_count", 0),
+                    "citations": item.get("cited_by_count", 0),  # ✅ Usa el campo correcto
                     "abstract": item.get("abstract", "No disponible"),
                     "url": item.get("primary_location", {}).get("landing_page_url") or item.get("doi", "#")
                 })
