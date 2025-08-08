@@ -21,7 +21,7 @@ QUERY = "digital transformation environmental information system open data susta
 #       FUNCIONES
 # ================================
 
-def buscar_openalex(query, limit=3):
+def buscar_openalex(query, limit=6):
     """
     Busca artículos en OpenAlex (https://openalex.org)
     """
@@ -30,11 +30,11 @@ def buscar_openalex(query, limit=3):
         "search": query,
         "filter": "is_oa:true",  # Solo acceso abierto
         "per_page": limit,
-        "sort": "cited_by_count:desc"  # ✅ Campo correcto
+        "sort": "cited_by_count:desc"
     }
     try:
         print("🔍 Buscando en OpenAlex...")
-        response = requests.get(url, params=params, timeout=15)
+        response = requests.get(url, params=params, timeout=30)
         if response.status_code == 200:
             data = response.json()
             results = []
@@ -44,7 +44,7 @@ def buscar_openalex(query, limit=3):
                     "authors": [author["author"]["display_name"] for author in item.get("authorships", [])[:4]],
                     "year": item.get("publication_year"),
                     "journal": item.get("primary_location", {}).get("source", {}).get("display_name", "Sin revista"),
-                    "citations": item.get("cited_by_count", 0),  # ✅ Usa el campo correcto
+                    "citations": item.get("cited_by_count", 0),
                     "abstract": item.get("abstract", "No disponible"),
                     "url": item.get("primary_location", {}).get("landing_page_url") or item.get("doi", "#")
                 })
@@ -56,63 +56,6 @@ def buscar_openalex(query, limit=3):
     except Exception as e:
         print(f"❌ Error conexión OpenAlex: {str(e)}")
         return []
-
-def buscar_doaj(query, limit=3):
-    """
-    Busca artículos en DOAJ (https://doaj.org)
-    """
-    url = "https://doaj.org/api/v1/search/articles"  # ✅ Endpoint correcto
-    query_str = f"title:{query} OR abstract:{query}"
-    params = {
-        "q": query_str,
-        "page": 1,
-        "pageSize": limit
-    }
-    try:
-        print("🔍 Buscando en DOAJ...")
-        response = requests.get(url, params=params, timeout=15)
-        if response.status_code == 200:
-            data = response.json()
-            results = []
-            for item in data.get("results", [])[:limit]:
-                bibjson = item.get("bibjson", {})
-                link = next((l for l in item.get("links", []) if l.get("type") == "fulltext"), {})
-                results.append({
-                    "title": bibjson.get("title", "Sin título"),
-                    "authors": [author.get("name", "Anónimo") for author in bibjson.get("author", [])[:4]],
-                    "year": bibjson.get("year", "N/A"),
-                    "journal": bibjson.get("journal", {}).get("title", "Revista desconocida"),
-                    "citations": "N/A",
-                    "abstract": bibjson.get("abstract", "No disponible"),
-                    "url": link.get("url", "#")
-                })
-            print(f"✅ {len(results)} artículos encontrados en DOAJ.")
-            return results
-        else:
-            print(f"❌ Error DOAJ {response.status_code}: {response.text}")
-            return []
-    except Exception as e:
-        print(f"❌ Error conexión DOAJ: {str(e)}")
-        return []
-
-def combinar_resultados(query, limit_openalex=3, limit_doaj=3):
-    """
-    Combina resultados de OpenAlex y DOAJ.
-    """
-    papers = []
-    papers += buscar_openalex(query, limit_openalex)
-    papers += buscar_doaj(query, limit_doaj)
-
-    # Eliminar duplicados por título
-    seen = set()
-    unique_papers = []
-    for paper in papers:
-        title = paper["title"].lower()
-        if title not in seen:
-            seen.add(title)
-            unique_papers.append(paper)
-
-    return unique_papers
 
 def formatear_papers_markdown(papers):
     """
@@ -178,7 +121,7 @@ def actualizar_wiki_redmine(contenido):
             url,
             data=json.dumps(data),
             headers=headers,
-            timeout=15,
+            timeout=30,
             verify=False  # Necesario por certificado autofirmado
         )
         if response.status_code in [200, 201]:
@@ -194,10 +137,10 @@ def actualizar_wiki_redmine(contenido):
 # === EJECUCIÓN PRINCIPAL ===
 def main():
     print("🚀 Iniciando actualización de referencias científicas...\n")
-    resultados = combinar_resultados(QUERY, limit_openalex=3, limit_doaj=3)
+    resultados = buscar_openalex(QUERY, limit=6)
 
     if not resultados:
-        print("❌ No se encontraron artículos en ninguna fuente.")
+        print("❌ No se encontraron artículos en OpenAlex.")
         return
 
     contenido = formatear_papers_markdown(resultados)
