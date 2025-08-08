@@ -61,7 +61,7 @@ def buscar_doaj(query, limit=3):
     """
     Busca artículos en DOAJ (https://doaj.org)
     """
-    url = "https://doaj.org/api/v2/search/articles"
+    url = "https://doaj.org/api/v1/search/articles"  # ✅ Endpoint correcto
     query_str = f"title:{query} OR abstract:{query}"
     params = {
         "q": query_str,
